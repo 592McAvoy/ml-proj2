@@ -1,0 +1,58 @@
+{
+    "name": "NN-width-l2",
+    "spec":"base-4",
+    "n_gpu": 1,
+    "target_cls":-1,
+    "arch": {
+        "type": "DeepNeuralNetwork",
+        "args": {
+            "num_classes":10,
+            "fea_base": 4,
+            "block_type":"basic_bn"
+        }
+    },
+    "train_loader": {
+        "type": "SVHNLoader",
+        "args":{
+            "gray": false,
+            "mode":"train",
+            "batch_size": 256,
+            "shuffle": true,
+            "num_workers": 2
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args":{
+            "lr": 0.001,
+            "weight_decay": 0.002
+        }
+    },
+    "loss": "ce_loss",
+    "metrics": [
+        "accuracy", "recall"
+    ],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 0.1
+        }
+    },
+    "trainer_module":{
+        "type": "Trainer_NN",
+        "args": {}
+    },
+    "trainer": {
+        "epochs": 100,
+
+        "save_dir": "saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        
+        "monitor": "min val_loss",
+        "early_stop": 10,
+
+        "tensorboard": true
+    }
+}
