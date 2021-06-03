@@ -1,4 +1,3 @@
-from model.LDA import LinearDiscriminantAnalysis as LDA
 import matplotlib.cm as mpl_color_map
 import cv2
 import os

@@ -3,7 +3,7 @@ import argparse
 import collections
 import torch
 import numpy as np
-import data_loader.data_loaders as module_data
+import data_loader as module_data
 import utils.loss as module_loss
 import utils.metric as module_metric
 import model as module_arch
@@ -25,10 +25,8 @@ def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
-    tgt_cls = config['target_cls'] if config['target_cls'] > 0 else None
-    train_loader = config.init_obj(
-        'train_loader', module_data, target_cls=tgt_cls)
-    valid_loader = train_loader.split_validation()
+    train_loader = config.init_obj('train_loader', module_data)
+    # valid_loader = train_loader.split_validation()
     # valid_loader = config.init_obj(
     #     'train_loader', module_data, target_cls=tgt_cls, mode='valid')
     # print(len(train_loader), len(valid_loader))
@@ -36,11 +34,7 @@ def main(config):
     # exit()
 
     # build model architecture, then print to console
-    if 'Kernel' in config["name"]:
-        model = config.init_obj('arch', module_arch,
-                                N=train_loader.get_batchsize())
-    else:
-        model = config.init_obj('arch', module_arch)
+    model = config.init_obj('arch', module_arch)
     logger.info(model)
 
     # prepare for (multi-device) GPU training
@@ -65,7 +59,7 @@ def main(config):
                               config=config,
                               device=device,
                               data_loader=train_loader,
-                              valid_data_loader=valid_loader,
+                            #   valid_data_loader=valid_loader,
                               lr_scheduler=lr_scheduler)
     # trainer = Trainer(model, criterion, metrics, optimizer,
     #                   config=config,
@@ -93,10 +87,10 @@ if __name__ == '__main__':
                    type=float, target='optimizer;args;lr'),
         CustomArgs(['--bs', '--batch_size'], type=int,
                    target='train_loader;args;batch_size'),
-        CustomArgs(['--num', '--target_cls'], type=int, target='target_cls'),
         CustomArgs(['--spec'], type=str, target='spec'),
-        CustomArgs(['--fea', '--fea_base'], type=int, target='arch;args;fea_base'),
-        CustomArgs(['--layer', '--n_layer'], type=int, target='arch;args;n_layer')
+        CustomArgs(['--rec'], type=str, target='arch;args;recons_type'),
+        CustomArgs(['--ldim'], type=int, target='arch;args;latent_dim'),
+        CustomArgs(['-w', '--w_kld'], type=float, target='w_kld'),
     ]
     config = ConfigParser.from_args(args, options)
     main(config)

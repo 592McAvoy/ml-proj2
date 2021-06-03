@@ -1,34 +1,32 @@
 {
-    "name": "NN-reg",
-    "spec":"weight_decay0.02",
+    "name": "VAE-test",
+    "spec":"init",
     "n_gpu": 1,
-    "target_cls":-1,
     "arch": {
-        "type": "DeepNeuralNetwork",
+        "type": "VAE",
         "args": {
-            "num_classes":10,
-            "fea_base": 32,
-            "n_layer": 4,
-            "block_type":"basic_bn"
+            "in_channels": 3,
+            "latent_dim": 128,
+            "hidden_base": 32
         }
     },
     "train_loader": {
-        "type": "SVHNLoader",
+        "type": "CUBLoader",
         "args":{
-            "gray": false,
-            "mode":"train",
-            "batch_size": 256,
+            "im_res": 64,
+            "batch_size": 64,
             "shuffle": true,
-            "num_workers": 2
+            "num_workers": 4
         }
     },
     "optimizer": {
         "type": "Adam",
         "args":{
             "lr": 0.001,
-            "weight_decay": 0.02
+            "weight_decay": 0
         }
     },
+    "w_kld": 1.0,
     "loss": "ce_loss",
     "metrics": [
         "accuracy", "recall"
@@ -37,21 +35,21 @@
         "type": "StepLR",
         "args": {
             "step_size": 50,
-            "gamma": 0.1
+            "gamma": 0.8
         }
     },
     "trainer_module":{
-        "type": "Trainer_NN",
+        "type": "Trainer",
         "args": {}
     },
     "trainer": {
-        "epochs": 100,
+        "epochs": 500,
 
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
         
-        "monitor": "min val_loss",
+        "monitor": "min loss",
         "early_stop": 10,
 
         "tensorboard": true

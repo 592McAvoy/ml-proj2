@@ -25,7 +25,7 @@ class BaseDataLoader(DataLoader):
             'num_workers': num_workers,
             'drop_last': drop_last
         }
-        super().__init__(sampler=self.sampler, **self.init_kwargs)
+        super().__init__(sampler=self.sampler, pin_memory=True, **self.init_kwargs)
 
     def _split_sampler(self, split):
         if split == 0.0:

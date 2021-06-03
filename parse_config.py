@@ -27,8 +27,6 @@ class ConfigParser:
 
         exper_name = self.config['name']
         
-        if self.config['target_cls'] > 0:
-            exper_name = '{}_Cls{}'.format(exper_name,self.config['target_cls'])
 
         if config['spec'] == "": # use timestamp as default run-id
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')

@@ -16,6 +16,7 @@ class CUBDataset(data.Dataset):
     data_dir = 'data/CUB_200/images'
     data_list = 'data/CUB_200/images.txt'
     bounding_box = 'data/CUB_200/bounding_boxes.txt'
+    class_list = 'data/CUB_200/image_class_labels.txt'
     def __init__(self, transform, box_crop=True):
         self.transform = transform
         self.crop = box_crop
@@ -25,6 +26,9 @@ class CUBDataset(data.Dataset):
         
         with open(self.bounding_box, 'r') as fd:
             self.box = fd.readlines()
+        
+        with open(self.class_list, 'r') as fd:
+            self.label = fd.readlines()
 
 
     def __getitem__(self, index):
@@ -40,12 +44,12 @@ class CUBDataset(data.Dataset):
             x, y, w, h = self.box[index].split()[1:] 
             x, y, w, h = cvt(x), cvt(y), cvt(w), cvt(h)
             im = im.crop((x,y,x+w,y+h))
-        # print(im.getpixel((0,0)))
-        # print(im.size)
-        im = self.transform(im)
-        # print(im.size())
         
-        return im
+        im = self.transform(im)
+        
+        label = self.label[index].split()[-1]
+        
+        return im, int(label)
 
     def __len__(self):
         return len(self.data)
@@ -58,6 +62,7 @@ class CUBLoader(BaseDataLoader):
         # Normalize to -1 ~ 1        
         trfm = T.Compose([
             T.Resize((im_res, im_res)),
+            T.RandomHorizontalFlip(),
             T.ToTensor(),
             T.Normalize(mean=[0.5, 0.5, 0.5],
                         std=[0.5, 0.5, 0.5])
@@ -84,7 +89,7 @@ if __name__ == '__main__':
             ])
     dset = CUBDataset(trfm)
     print(len(dset))
-    im = make_grid([dset[i] for i in range(16)], nrow=4, normalize=True)
+    im = make_grid([dset[i][0] for i in range(16)], nrow=4, normalize=True)
     print(im.size())
     npimg = im.numpy().transpose(1, 2, 0)*255
     print(npimg.shape)

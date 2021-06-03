@@ -2,7 +2,7 @@ import cv2
 import argparse
 import torch
 from tqdm import tqdm
-import data_loader.data_loaders as module_data
+import data_loader as module_data
 import utils.loss as module_loss
 import utils.metric as module_metric
 # import model.model as module_arch
@@ -10,45 +10,37 @@ import model as module_arch
 from parse_config import ConfigParser
 from utils.gradcam import GradCam
 from torchvision.utils import make_grid
-from utils.plot import plot_tsne, plot_gram_cam, plot_lda
+# from utils.plot import plot_tsne, plot_gram_cam, plot_lda
 import numpy as np
+import os
 
-
-def save_grid(im, im_name):
+def save_grid(im, spec, im_name):
     im = make_grid(im, nrow=im.size(0)//4, normalize=True)
-    npimg = im.numpy().transpose(1, 2, 0)*255
+    npimg = im.cpu().numpy().transpose(1, 2, 0)*255
+    npimg = cv2.cvtColor(npimg, cv2.COLOR_BGR2RGB)
     # print(npimg.shape)
-    cv2.imwrite('saved/imgs/gradcam/'+im_name, npimg)
+    im_path = os.path.join('saved/imgs/', spec)
+    os.makedirs(im_path, exist_ok=True)
+    cv2.imwrite(os.path.join(im_path,im_name), npimg)
 
 
 def main(config):
     logger = config.get_logger('test')
 
     # setup data_loader instances
-    old_bs = config['train_loader']['args']["batch_size"]
-    tgt_cls = config['target_cls'] if config['target_cls'] > 0 else None
     data_loader = getattr(module_data, config['train_loader']['type'])(
-        batch_size=512,
+        batch_size=8,
         shuffle=False,
-        validation_split=0.0,
-        mode='test',
-        num_workers=0,
-        N_sample=None,
-        target_cls=tgt_cls,
-        gray=config['train_loader']['args']["gray"]
+        num_workers=0
     )
 
     # build model architecture, then print to console
-    if 'Kernel' in config["name"]:
-        model = config.init_obj('arch', module_arch,
-                                N=old_bs)
-    else:
-        model = config.init_obj('arch', module_arch)
+    # if 'Kernel' in config["name"]:
+    #     model = config.init_obj('arch', module_arch,
+    #                             N=old_bs)
+    # else:
+    model = config.init_obj('arch', module_arch)
     # logger.info(model)
-
-    # get function handles of loss and metrics
-    loss_fn = getattr(module_loss, config['loss'])
-    metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
     checkpoint = torch.load(config.resume)
@@ -63,53 +55,75 @@ def main(config):
     model = model.to(device)
     model.eval()
 
-    grad_cam = GradCam(model)
+    # grad_cam = GradCam(model)
 
-    total_loss = 0.0
-    total_metrics = torch.zeros(len(metric_fns))
+    # total_loss = 0.0
+    # total_metrics = torch.zeros(len(metric_fns))
 
-    for i, (data, target) in enumerate(tqdm(data_loader)):
-        data, target = data.to(device), target.to(device)
+    with torch.no_grad():
+        # image reconstrution
+        # for data, target in data_loader:
+        #     data, target = data.to(device), target.to(device)
+        #     output, mu, logvar = model(data)
 
-        #
-        # save sample images, or do something with output here
-        #
+        #     mask = torch.ones((64, 64)).to(device)
+        #     w = 20
+        #     mask[32-w:32+w, 32-w:32+w] = 0.
+        #     corrop_data = data * mask
+        #     corrop_output, *_ = model(corrop_data)
+        #     # print(corrop_data.size(), corrop_output.size())
+        #     recons_sample = torch.cat([
+        #         data, output, corrop_data, corrop_output
+        #     ], dim=0)
+        #     # print(recons_sample.size())
+        #     save_grid(recons_sample, config["spec"], 'recons_sample_{}.png'.format(w))
+        #     break
+        # exit()
 
-        # ret = plot_gram_cam(data[:16], grad_cam)
-        # save_grid(ret, '{}.png'.format(config['spec']))
-        with torch.no_grad():
-            embeddings = model.embedding(data, all_ret=True)
-            for name in embeddings.keys():
-                plot_tsne(embeddings[name].cpu().numpy(),
-                 target.cpu().numpy(), config['spec']+'+'+name)
-            # embeddings = model.embedding(data, all_ret=False)
-            # plot_tsne(embeddings.cpu().numpy(), target.cpu().numpy(), 'layer-4+pooling')#'config['spec']+'+pooling')
-        break
+        # random noise generation
+        # N = 64
+        # D = config['arch']['args']['latent_dim']
+        # fix_noise = torch.randn((N, D)).to(device)
+        # gen_sample = model.decode(fix_noise)
+        # save_grid(gen_sample, config["spec"], 'gen_sample.png')
 
-        with torch.no_grad():
-            if 'Kernel' in config['name']:
-                output, _ = model.predict(data)
-            else:
-                output = model(data)
+        # # interpolation
+        # h1, h2, h3, h4 = fix_noise[0:1, ...], fix_noise[15:16, ...], fix_noise[31:32, ...], fix_noise[47:48, ...]
+        # tmp1 = []
+        # tmp2 = []
+        # for i in range(8):
+        #     p = i/7
+        #     tmp1.append(p*h1+(1-p)*h2)
+        #     tmp2.append(p*h3+(1-p)*h4)
+        # tmp1 = torch.stack(tmp1, dim=0)
+        # tmp2 = torch.stack(tmp2, dim=0)
 
-            if 'NN' in config['name']:
-                loss = loss_fn(output, target)
-            else:
-                loss, *_ = model.cal_loss(output, target)
+        # tmp = []
+        # for i in range(8):
+        #     p = i/7
+        #     tmp.append(p*tmp1+(1-p)*tmp2)
 
-        # computing loss, metrics on test set
-        # loss = loss_fn(output, target)
-        batch_size = data.shape[0]
-        total_loss += loss.item() * batch_size
-        for i, metric in enumerate(metric_fns):
-            total_metrics[i] += metric(output, target).cpu() * batch_size
+        for data, target in data_loader:
+            data, target = data.to(device), target.to(device)
+            break
+        mu, log_var = model.encode(data)
+        z = model.reparameterize(mu, log_var)
 
-    n_samples = len(data_loader.sampler)
-    log = {'loss': total_loss / n_samples}
-    log.update({
-        met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
-    })
-    logger.info(log)
+        h1, h2 = z[:4, ...], z[4:, ...]
+        tmp = []
+        for i in range(8):
+            p = i/7
+            tmp.append(p*h1+(1-p)*h2)
+        tmp = torch.cat(tmp, dim=0)   
+        interp_noise = tmp     
+        interp_sample = model.decode(interp_noise)
+        im = torch.cat([data[4:, ...], interp_sample, data[:4, ...]], dim=0)
+        print(im.size())
+        N, C, H, W = im.size()
+        im = im.contiguous().view(10,4,C, H, W).permute(1,0,2,3,4)
+        print(im.size())
+        im = im.contiguous().view(N,C,H,W)
+        save_grid(im, config["spec"], 'interp_sample.png')
 
 
 if __name__ == '__main__':

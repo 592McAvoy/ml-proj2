@@ -1,47 +1,48 @@
 {
-    "name": "LR",
-    "spec":"base",
+    "name": "VAE-Latent",
+    "spec":"init",
     "n_gpu": 1,
-    "target_cls":-1,
     "arch": {
-        "type": "LogisticRegression",
+        "type": "VAE",
         "args": {
-            "in_dim": 1024,
-            "reg":"none",
-            "lamb":0
+            "in_channels": 3,
+            "latent_dim": 128,
+            "hidden_base": 32,
+            "hidden_layer": 5,
+            "recons_type": "mse",
+            "norm":"nn"
         }
     },
     "train_loader": {
-        "type": "SVHNLoader",
+        "type": "CelebALoader",
         "args":{
-            "gray": true,
-            "mode":"train",
-            "batch_size": 256,
+            "im_res": 64,
+            "batch_size": 64,
             "shuffle": true,
-            "num_workers": 0,
-            "N_sample": 10000
+            "num_workers": 4
         }
     },
     "optimizer": {
         "type": "Adam",
         "args":{
-            "lr": 0.001,
+            "lr": 0.002,
             "weight_decay": 0
         }
     },
-    "loss": "nll_loss",
+    "w_kld": 1.0,
+    "loss": "ce_loss",
     "metrics": [
         "accuracy", "recall"
     ],
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
-            "step_size": 50,
+            "step_size": 100,
             "gamma": 0.1
         }
     },
     "trainer_module":{
-        "type": "Trainer_LR",
+        "type": "Trainer",
         "args": {}
     },
     "trainer": {
@@ -51,7 +52,7 @@
         "save_period": 1,
         "verbosity": 2,
         
-        "monitor": "min val_loss",
+        "monitor": "min loss",
         "early_stop": 10,
 
         "tensorboard": true
